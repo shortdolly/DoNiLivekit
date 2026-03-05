@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小豆泥电竞</title>
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+    <style>
+        /* 全局深色主题与重置 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1f22; color: #dbdee1; height: 100vh; display: flex; overflow: hidden; }
+
+        /* 左侧边栏 */
+        #sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; padding: 20px; border-right: 1px solid #1e1f22; }
+        .sidebar-title { font-size: 14px; font-weight: bold; color: #f2f3f5; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+        input { padding: 12px; border-radius: 6px; border: none; background-color: #1e1f22; color: #dbdee1; font-size: 14px; outline: none; }
+        input:focus { box-shadow: 0 0 0 2px #5865F2; }
+        button.primary-btn { background-color: #248046; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+        button.primary-btn:hover { background-color: #1a6334; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 成员列表与音量滑块样式 */
+        #participant-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .user-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background-color: #313338; border-radius: 6px; font-size: 14px; color: #dbdee1; }
+        .user-avatar { width: 32px; height: 32px; background-color: #5865F2; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; flex-shrink: 0; }
+        .user-info { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .user-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .user-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+        .user-status { width: 10px; height: 10px; background-color: #23a559; border-radius: 50%; flex-shrink: 0; }
+        .user-bottom { display: flex; flex-direction: column; gap: 6px; }
+        
+        /* 音量滑块 */
+        .volume-slider { width: 100%; height: 6px; -webkit-appearance: none; background: #4f545c; border-radius: 3px; outline: none; transition: background 0.2s; cursor: pointer; }
+        .volume-slider:hover { background: #80848e; }
+        .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #dbdee1; cursor: pointer; border: 2px solid #313338; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+
+        /* 右侧主区域：修复布局与滚动溢出 */
+        #main-area { flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
+        #header { height: 48px; background-color: #313338; border-bottom: 1px solid #1e1f22; display: flex; align-items: center; padding: 0 20px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.2); z-index: 10; flex-shrink: 0; }
+        
+        #video-container { 
+            flex: 1; background-color: #000000; padding: 20px; 
+            display: flex; flex-wrap: wrap; justify-content: center; 
+            align-content: flex-start; 
+            gap: 15px; overflow-y: auto; 
+        }
+
+        /* 🌟 核心修改：将原本给 video 的样式转移给 video-wrapper 包装盒 🌟 */
+        .video-wrapper { 
+            flex: 1 1 40%; 
+            min-width: 320px; 
+            max-width: 48%; 
+            max-height: 45vh; 
+            border-radius: 8px; 
+            background-color: #111; 
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5); 
+            cursor: pointer; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease; 
+            /* 关键点：开启相对定位，让内部的名字标签能基于它定位 */
+            position: relative; 
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .video-wrapper:hover { transform: scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.8); z-index: 5; }
+        
+        .video-wrapper:only-of-type { 
+            max-width: 100%; 
+            max-height: calc(100vh - 160px); 
+        }
+
+        /* 包装盒内部真正的视频标签填满盒子 */
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            outline: none;
+        }
+
+        /* 🌟 新增：名字标签的悬浮样式 🌟 */
+        .video-name-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            pointer-events: none; /* 极其重要：让鼠标点击穿透它，不影响双击全屏 */
+            z-index: 10;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px); /* 加一点高贵的毛玻璃效果 */
+        }
+
+        /* 底部控制台与设备选择区 */
+        #controls-bar { height: 80px; background-color: #2b2d31; display: flex; justify-content: center; align-items: center; gap: 20px; padding: 0 20px; border-top: 1px solid #1e1f22; flex-shrink: 0; }
+        .mic-control-group { display: flex; align-items: center; background-color: #313338; border-radius: 24px; padding: 4px 12px; gap: 10px; }
+        select { background-color: #1e1f22; color: #dbdee1; border: 1px solid #1e1f22; padding: 8px 10px; border-radius: 12px; outline: none; font-size: 13px; max-width: 160px; cursor: pointer; transition: border-color 0.2s; }
+        select:hover:not(:disabled) { border-color: #5865F2; }
+        select:disabled { cursor: not-allowed; opacity: 0.5; }
+        .action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #313338; color: #dbdee1; border: none; padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+        .action-btn:hover:not(:disabled) { background-color: #404249; color: white; }
+        .action-btn.active { background-color: #f23f42; color: white; }
+        .mic-control-group .action-btn { background-color: transparent; padding: 8px 12px; }
+        .mic-control-group .action-btn:hover:not(:disabled) { background-color: #404249; }
+        .mic-control-group .action-btn.active { background-color: #f23f42; }
+
+        #audio-container { display: none; }
+
+        /* 聊天面板 */
+        #chat-panel { width: 300px; background-color: #2b2d31; border-left: 1px solid #1e1f22; display: flex; flex-direction: column; flex-shrink: 0; }
+        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 15px; font-weight: bold; border-bottom: 1px solid #1e1f22; flex-shrink: 0; }
+        #chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-message { font-size: 13px; line-height: 1.4; display: flex; flex-direction: column; }
+        .chat-meta { font-size: 11px; color: #80848e; margin-bottom: 4px; }
+        .chat-content { background-color: #313338; padding: 8px 12px; border-radius: 8px; align-self: flex-start; max-width: 90%; word-break: break-word; color: #dbdee1; }
+        .chat-message.self { align-items: flex-end; }
+        .chat-message.self .chat-content { background-color: #5865F2; color: #fff; }
+        .chat-input-area { padding: 15px; background-color: #2b2d31; border-top: 1px solid #1e1f22; display: flex; gap: 10px; flex-shrink: 0; }
+        #chat-input { flex: 1; padding: 10px; border-radius: 6px; border: none; background-color: #1e1f22; color: white; outline: none; font-size: 13px; }
+        #btn-send { background-color: #5865F2; border: none; color: white; border-radius: 6px; padding: 0 15px; cursor: pointer; font-weight: bold; font-size: 13px; transition: background 0.2s; }
+        #btn-send:hover:not(:disabled) { background-color: #4752c4; }
+        #btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-title">📡 频道登录</div>
+        <div class="input-group" id="login-section">
+            <input type="text" id="username" placeholder="请输入你的开黑昵称...">
+            <button id="btn-connect" class="primary-btn" onclick="joinRoom()">加入频道</button>
+        </div>
+        <div class="sidebar-title" style="margin-top: 10px;">👥 在线成员 (<span id="user-count">0</span>)</div>
+        <div id="participant-list">
+            <div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 20px;">加入频道后显示在线人员</div>
+        </div>
+    </div>
+
+    <div id="main-area">
+        <div id="header"># 🎮 直播与共享大厅</div>
+        <div id="video-container"></div>
+        <div id="audio-container"></div>
+
+        <div id="controls-bar">
+            <div class="mic-control-group">
+                <select id="mic-select" onchange="switchMic(this.value)" disabled>
+                    <option value="">等待权限...</option>
+                </select>
+                <button id="btn-mic" class="action-btn" onclick="toggleMic()" disabled>
+                    🎤 <span>开启麦克风</span>
+                </button>
+                <button id="btn-noise" class="action-btn" onclick="toggleNoiseSuppression()" disabled>
+                    🔊 <span>降噪: 开</span>
+                </button>
+            </div>
+
+            <div class="mic-control-group">
+                <select id="screen-res" disabled>
+                    <option value="1280x720">720P</option>
+                    <option value="1920x1080" selected>1080P</option>
+                    <option value="2560x1440">2K</option>
+                </select>
+                <select id="screen-fps" disabled>
+                    <option value="30">30 FPS</option>
+                    <option value="60" selected>60 FPS</option>
+                </select>
+                <select id="screen-bitrate" disabled>
+                    <option value="2500">2.5 Mbps (流畅)</option>
+                    <option value="5000" selected>5.0 Mbps (高清)</option>
+                    <option value="8000">8.0 Mbps (超清)</option>
+                    <option value="15000">15.0 Mbps (原画)</option>
+                    <option value="20000">20.0 Mbps (高码率)</option>
+                    <option value="25000">25.0 Mbps (高码率+)</option>
+                    <option value="30000">30.0 Mbps (极限)</option>
+                </select>
+                <button id="btn-screen" class="action-btn" onclick="toggleScreen()" disabled>
+                    💻 <span>共享屏幕</span>
+                </button>
+            </div>
+
+            <button id="btn-diagnose" class="action-btn" onclick="runAudioShareDiagnostics()">
+                🧪 <span>一键排查音频</span>
+            </button>
+            <button id="btn-leave" class="action-btn" onclick="leaveRoom()" style="display: none;">
+                🚪 <span>断开连接</span>
+            </button>
+        </div>
+    </div>
+    <div id="chat-panel">
+        <div class="chat-header">💬 局域网聊天</div>
+        <div id="chat-messages">
+            <div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 10px;">欢迎来到聊天室</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendChatMessage()" disabled>
+            <button id="btn-send" onclick="sendChatMessage()" disabled>发送</button>
+        </div>
+    </div>
+
+<script>
+    const LIVEKIT_URL = 'ws://10.126.126.10:7880';
+    let room;
+    let isMicOn = false;
+    let isScreenOn = false;
+    let isNoiseSuppressionOn = true;
+    const userVolumes = {}; 
+    let screenBitrateMonitorTimer = null;
+    let lastScreenOutboundStats = null;
+    let currentScreenTargetBitrate = 0;
+
+    // DOM加载完毕后恢复本地设置
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedUser = localStorage.getItem('lk_username');
+        if (savedUser) document.getElementById('username').value = savedUser;
+        
+        const savedNoise = localStorage.getItem('lk_noise');
+        if (savedNoise !== null) {
+            isNoiseSuppressionOn = savedNoise === 'true';
+            const btn = document.getElementById('btn-noise');
+            btn.innerHTML = isNoiseSuppressionOn ? '🔊 <span>降噪: 开</span>' : '📢 <span>降噪: 关</span>';
+            btn.classList.toggle('active', !isNoiseSuppressionOn);
+        }
+    });
+
+    function setParticipantVolume(identity, source, volumeValue) {
+        if (!userVolumes[identity]) {
+            userVolumes[identity] = { mic: 1, screen: 1 };
+        }
+        userVolumes[identity][source] = parseFloat(volumeValue);
+        const audioEls = document.querySelectorAll(`audio[data-audio-identity="${identity}"][data-audio-source="${source}"]`);
+        audioEls.forEach(el => { el.volume = userVolumes[identity][source]; });
+    }
+
+    function getMicCaptureOptions() {
+        return {
+            echoCancellation: isNoiseSuppressionOn,
+            noiseSuppression: isNoiseSuppressionOn,
+            autoGainControl: isNoiseSuppressionOn
+        };
+    }
+
+    function updateParticipantList() {
+        const listEl = document.getElementById('participant-list');
+        listEl.innerHTML = ''; 
+        let count = 0;
+        
+        const renderUser = (p, isSelf) => {
+            count++;
+            const name = p.name || p.identity;
+            const initial = name ? name.charAt(0).toUpperCase() : '?';
+            const displayName = isSelf ? `${name} (我)` : name;
+            
+            if (!userVolumes[p.identity]) {
+                userVolumes[p.identity] = { mic: 1, screen: 1 };
+            }
+            
+            let volumeControlsHTML = '';
+            if (!isSelf) {
+                const micVol = userVolumes[p.identity].mic;
+                volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="麦克风音量">🎤</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${micVol}" oninput="setParticipantVolume('${p.identity}', 'mic', this.value)"></div>`;
+                
+                const hasScreenAudio = Array.from(p.audioTrackPublications.values()).some(pub => pub.source === LivekitClient.Track.Source.ScreenShareAudio || pub.source === 'screen_share_audio');
+                if (hasScreenAudio) {
+                    const screenVol = userVolumes[p.identity].screen;
+                    volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="共享音量">💻</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${screenVol}" oninput="setParticipantVolume('${p.identity}', 'screen', this.value)"></div>`;
+                }
+            }
+
+            const isMicMuted = !p.isMicrophoneEnabled;
+            const statusIcon = isMicMuted ? '<span style="color: #f23f42; font-size: 16px;" title="已闭麦">🔇</span>' : '<span style="color: #23a559; font-size: 16px;" title="已开麦">🎙️</span>';
+
+            const userBottomHTML = volumeControlsHTML ? `<div class="user-bottom">${volumeControlsHTML}</div>` : '';
+
+            return `
+                <div class="user-item">
+                    <div class="user-avatar">${initial}</div>
+                    <div class="user-info">
+                        <div class="user-top">
+                            <div class="user-name" title="${displayName}">${displayName} ${statusIcon}</div>
+                            <div class="user-status"></div>
+                        </div>
+                        ${userBottomHTML}
+                    </div>
+                </div>
+            `;
+        };
+        
+        if (room.localParticipant) listEl.innerHTML += renderUser(room.localParticipant, true);
+        if (room.remoteParticipants) room.remoteParticipants.forEach(p => listEl.innerHTML += renderUser(p, false));
+        document.getElementById('user-count').innerText = count;
+    }
+
+    async function updateMicList() {
+        try {
+            const devices = await LivekitClient.Room.getLocalDevices('audioinput');
+            const selectEl = document.getElementById('mic-select');
+            selectEl.innerHTML = ''; 
+            if (devices.length === 0) { selectEl.innerHTML = '<option value="">未找到麦克风</option>'; return; }
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `未知设备 (${device.deviceId.substring(0, 5)}...)`;
+                selectEl.appendChild(option);
+            });
+            const savedMic = localStorage.getItem('lk_mic');
+            if (savedMic && devices.some(d => d.deviceId === savedMic)) {
+                selectEl.value = savedMic;
+            }
+        } catch (e) { console.error('获取麦克风列表失败:', e); }
+    }
+
+    async function switchMic(deviceId) {
+        if (!room) return;
+        localStorage.setItem('lk_mic', deviceId);
+        try { await room.switchActiveDevice('audioinput', deviceId); } 
+        catch (e) { console.error('切换麦克风失败:', e); alert('切换失败，该设备可能被独占或拔出。'); }
+    }
+
+    async function joinRoom() {
+        const username = document.getElementById('username').value.trim();
+        if (!username) return alert('起个响亮的名字吧！');
+
+        localStorage.setItem('lk_username', username);
+
+        try {
+            const response = await fetch(`/api/get_token?user=${encodeURIComponent(username)}`);
+            const data = await response.json();
+            const token = data.token;
+
+            room = new LivekitClient.Room({
+                audioCaptureDefaults: getMicCaptureOptions(),
+                publishDefaults: {
+                    videoCodec: 'h264'
+                }
+            });
+
+            // 🌟 核心修改：接收到视频流时，包装盒子并打上名字标签
+            room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                if (track.kind === 'video') {
+                    const videoEl = track.attach();
+                    
+                    // 创建包装盒
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'video-wrapper';
+                    wrapper.id = 'video-wrapper-' + track.sid; // 使用 track.sid 精准绑定包装盒
+                    wrapper.dataset.videoIdentity = participant.identity; // 用于离线时清理整个盒子
+                    wrapper.title = "双击全屏放大观看";
+                    
+                    // 获取分享者的名字
+                    const displayName = participant.name || participant.identity || '未知成员';
+                    
+                    // 创建名字标签
+                    const nameLabel = document.createElement('div');
+                    nameLabel.className = 'video-name-label';
+                    nameLabel.innerText = `${displayName} 的屏幕`;
+                    
+                    // 双击全屏事件现在绑定在包装盒上（这样全屏时名字标签也能显示！）
+                    wrapper.ondblclick = () => {
+                        if (!document.fullscreenElement) {
+                            if (wrapper.requestFullscreen) wrapper.requestFullscreen();
+                            else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+                        } else {
+                            if (document.exitFullscreen) document.exitFullscreen();
+                        }
+                    };
+                    
+                    // 把视频和名字放进盒子里
+                    wrapper.appendChild(videoEl);
+                    wrapper.appendChild(nameLabel);
+                    
+                    // 把盒子放入主界面
+                    document.getElementById('video-container').appendChild(wrapper);
+
+                } else if (track.kind === 'audio') {
+                    const audioEl = track.attach();
+                    audioEl.dataset.audioIdentity = participant.identity;
+                    
+                    const source = (track.source === LivekitClient.Track.Source.ScreenShareAudio || track.source === 'screen_share_audio') ? 'screen' : 'mic';
+                    audioEl.dataset.audioSource = source;
+
+                    if (!userVolumes[participant.identity]) {
+                        userVolumes[participant.identity] = { mic: 1, screen: 1 };
+                    }
+                    audioEl.volume = userVolumes[participant.identity][source];
+                    
+                    document.getElementById('audio-container').appendChild(audioEl);
+                }
+            });
+
+            // 🌟 核心修改：如果有人单独关掉了屏幕共享，要把他的包装盒一起删掉
+            room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track) => {
+                track.detach().forEach(element => element.remove());
+                
+                // 精准狙击并删除对应的包装盒
+                const wrapper = document.getElementById('video-wrapper-' + track.sid);
+                if (wrapper) wrapper.remove();
+            });
+
+            // 退出房间暴力清场，利用之前的 dataset 删除整个盒子
+            room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
+                document.querySelectorAll(`[data-video-identity="${participant.identity}"]`).forEach(el => el.remove());
+                document.querySelectorAll(`[data-audio-identity="${participant.identity}"]`).forEach(el => el.remove());
+                updateParticipantList();
+            });
+
+            room.on(LivekitClient.RoomEvent.ParticipantConnected, updateParticipantList);
+
+            // 监听静音状态变化以刷新列表
+            room.on(LivekitClient.RoomEvent.TrackMuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.TrackUnmuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.LocalTrackMuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.LocalTrackUnmuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.TrackPublished, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.TrackUnpublished, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+
+            // 监听文字聊天消息
+            room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant) => {
+                try {
+                    const text = new TextDecoder().decode(payload);
+                    const data = JSON.parse(text);
+                    if (data.msg) {
+                        renderChatMessage(participant ? (participant.name || participant.identity) : '未知', data.msg, false);
+                    }
+                } catch(e) { console.error('Data channel 解析失败:', e); }
+            });
+
+            await room.connect(LIVEKIT_URL, token);
+            
+            document.getElementById('btn-connect').disabled = true;
+            document.getElementById('btn-connect').innerText = '🟢 已连接';
+            document.getElementById('btn-connect').style.backgroundColor = '#1a6334';
+            document.getElementById('username').disabled = true;
+            
+            document.getElementById('btn-mic').disabled = false;
+            document.getElementById('btn-noise').disabled = false;
+            document.getElementById('mic-select').disabled = false;
+            document.getElementById('btn-screen').disabled = false;
+            document.getElementById('screen-res').disabled = false;
+            document.getElementById('screen-fps').disabled = false;
+            document.getElementById('screen-bitrate').disabled = false;
+            document.getElementById('btn-leave').style.display = 'flex';
+
+            // 加入后自动开麦（失败仅记录，不中断进房流程）
+            try {
+                await room.localParticipant.setMicrophoneEnabled(true, getMicCaptureOptions());
+                isMicOn = true;
+                const micBtn = document.getElementById('btn-mic');
+                micBtn.classList.add('active');
+                micBtn.innerHTML = '🔇 <span>关闭麦克风</span>';
+            } catch (e) {
+                console.warn('自动开麦失败:', e);
+            }
+            
+            document.getElementById('chat-input').disabled = false;
+            document.getElementById('btn-send').disabled = false;
+
+            updateParticipantList();
+            await updateMicList();
+
+        } catch (error) {
+            console.error('连接失败:', error);
+            alert('连接服务器失败，请检查网络。');
+        }
+    }
+
+    async function toggleMic() {
+        isMicOn = !isMicOn;
+        if (isMicOn) {
+            await room.localParticipant.setMicrophoneEnabled(true, getMicCaptureOptions());
+        } else {
+            await room.localParticipant.setMicrophoneEnabled(false);
+        }
+        const btn = document.getElementById('btn-mic');
+        if (isMicOn) {
+            btn.classList.add('active');
+            btn.innerHTML = '🔇 <span>关闭麦克风</span>';
+            await updateMicList();
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '🎤 <span>开启麦克风</span>';
+        }
+    }
+
+    async function toggleNoiseSuppression() {
+        isNoiseSuppressionOn = !isNoiseSuppressionOn;
+        localStorage.setItem('lk_noise', isNoiseSuppressionOn);
+        const btn = document.getElementById('btn-noise');
+        btn.innerHTML = isNoiseSuppressionOn ? '🔊 <span>降噪: 开</span>' : '📢 <span>降噪: 关</span>';
+        btn.classList.toggle('active', !isNoiseSuppressionOn);
+
+        if (room && isMicOn) {
+            try {
+                await room.localParticipant.setMicrophoneEnabled(false);
+                await room.localParticipant.setMicrophoneEnabled(true, getMicCaptureOptions());
+            } catch (e) {
+                console.error('切换降噪失败:', e);
+                alert('切换降噪失败，请重试。');
+            }
+        }
+    }
+
+    function getShareAudioErrorMessage(err) {
+        const name = err?.name || 'UnknownError';
+        if (name === 'NotAllowedError') return '你取消了系统音频授权，或未勾选“分享系统音频”。';
+        if (name === 'NotReadableError') return '浏览器无法启动系统音频采集（常见于系统限制、驱动占用或浏览器能力限制）。';
+        if (name === 'AbortError') return '共享窗口被关闭或共享流程被中断。';
+        return `系统音频共享失败：${name}`;
+    }
+
+    function getSystemAudioPreflight() {
+        const issues = [];
+        const ua = navigator.userAgent || '';
+        const isWindows = /Windows/i.test(ua);
+        const isChromium = /Chrome|Edg/i.test(ua);
+        const hasGetDisplayMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+
+        if (!hasGetDisplayMedia) issues.push('当前浏览器不支持屏幕共享 API（getDisplayMedia）。');
+        if (!window.isSecureContext) issues.push('当前页面不是安全上下文（建议使用 HTTPS 或 localhost）。');
+        if (!isWindows) issues.push('系统音频共享在非 Windows 平台上支持不稳定。');
+        if (!isChromium) issues.push('建议使用最新版 Chrome 或 Edge 进行系统音频共享。');
+
+        return { canTryAudio: hasGetDisplayMedia, issues };
+    }
+
+    function getDisplayMediaConstraints(withAudio = true) {
+        const video = { frameRate: { ideal: 60, max: 60 }, width: { ideal: 1920 }, height: { ideal: 1080 }, displaySurface: 'monitor' };
+        if (!withAudio) return { video, audio: false };
+        return {
+            video,
+            audio: {
+                echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+                channelCount: 2, sampleRate: 48000, sampleSize: 16,
+                suppressLocalAudioPlayback: false, systemAudio: 'include'
+            }
+        };
+    }
+
+    function hasPublishedScreenAudioTrack() {
+        if (!room || !room.localParticipant) return false;
+        const pubs = Array.from(room.localParticipant.audioTrackPublications.values());
+        return pubs.some(pub => {
+            const source = pub?.source;
+            return source === LivekitClient.Track.Source.ScreenShareAudio || source === 'screen_share_audio';
+        });
+    }
+
+    function getLocalScreenPublication() {
+        if (!room || !room.localParticipant) return null;
+        const pubs = Array.from(room.localParticipant.videoTrackPublications.values());
+        return pubs.find(pub => {
+            const source = pub?.source;
+            return source === LivekitClient.Track.Source.ScreenShare || source === 'screen_share';
+        }) || null;
+    }
+
+    function stopScreenBitrateMonitor() {
+        if (screenBitrateMonitorTimer) {
+            clearInterval(screenBitrateMonitorTimer);
+            screenBitrateMonitorTimer = null;
+        }
+        lastScreenOutboundStats = null;
+        currentScreenTargetBitrate = 0;
+    }
+
+    async function logCurrentScreenBitrate() {
+        const pub = getLocalScreenPublication();
+        const targetText = currentScreenTargetBitrate > 0
+            ? `${(currentScreenTargetBitrate / 1000000).toFixed(2)} Mbps`
+            : '未设置';
+
+        if (!pub || !pub.track) {
+            console.log(`[ScreenShare Stats] 目标码率=${targetText}，实际码率=暂无（未找到屏幕视频轨道）`);
+            return;
+        }
+
+        if (typeof pub.track.getRTCStatsReport !== 'function') {
+            console.log(`[ScreenShare Stats] 目标码率=${targetText}，实际码率=暂无（SDK未暴露RTC stats接口）`);
+            return;
+        }
+
+        try {
+            const report = await pub.track.getRTCStatsReport();
+            let outbound = null;
+
+            const pickOutbound = (stat) => {
+                if (!stat || stat.type !== 'outbound-rtp') return;
+                const kind = stat.kind || stat.mediaType;
+                if (kind !== 'video') return;
+                if (!outbound || (stat.bytesSent || 0) > (outbound.bytesSent || 0)) {
+                    outbound = stat;
+                }
+            };
+
+            if (Array.isArray(report)) {
+                report.forEach(pickOutbound);
+            } else if (report && typeof report.forEach === 'function') {
+                report.forEach(pickOutbound);
+            }
+
+            if (!outbound) {
+                console.log(`[ScreenShare Stats] 目标码率=${targetText}，实际码率=暂无（未抓到outbound-rtp/video）`);
+                return;
+            }
+
+            const ts = outbound.timestamp instanceof Date ? outbound.timestamp.getTime() : Number(outbound.timestamp);
+            const bytes = Number(outbound.bytesSent || 0);
+            let actualBps = null;
+
+            if (lastScreenOutboundStats && ts > lastScreenOutboundStats.ts && bytes >= lastScreenOutboundStats.bytes) {
+                const deltaBytes = bytes - lastScreenOutboundStats.bytes;
+                const deltaMs = ts - lastScreenOutboundStats.ts;
+                if (deltaMs > 0) actualBps = (deltaBytes * 8 * 1000) / deltaMs;
+            }
+
+            lastScreenOutboundStats = { ts, bytes };
+
+            if (actualBps === null) {
+                console.log(`[ScreenShare Stats] 目标码率=${targetText}，实际码率=采集中...`);
+            } else {
+                console.log(`[ScreenShare Stats] 目标码率=${targetText}，实际码率=${(actualBps / 1000000).toFixed(2)} Mbps`);
+            }
+        } catch (err) {
+            console.warn('[ScreenShare Stats] 读取RTC stats失败:', err);
+        }
+    }
+
+    function startScreenBitrateMonitor(targetBitrate) {
+        stopScreenBitrateMonitor();
+        currentScreenTargetBitrate = targetBitrate;
+        console.log(`[ScreenShare Stats] 开始监控，目标码率=${(targetBitrate / 1000000).toFixed(2)} Mbps`);
+        logCurrentScreenBitrate();
+        screenBitrateMonitorTimer = setInterval(logCurrentScreenBitrate, 2000);
+    }
+
+    async function runAudioShareDiagnostics() {
+        const btn = document.getElementById('btn-diagnose');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳ <span>排查中...</span>';
+
+        const now = new Date();
+        const preflight = getSystemAudioPreflight();
+        const report = [];
+        report.push('【系统音频共享诊断报告】');
+        report.push(`时间: ${now.toLocaleString()}`);
+        report.push(`页面地址: ${location.href}`);
+        report.push(`SecureContext: ${window.isSecureContext}`);
+        report.push(`协议: ${location.protocol}`);
+        report.push(`浏览器UA: ${navigator.userAgent}`);
+        report.push(`支持 getDisplayMedia: ${!!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)}`);
+
+        if (preflight.issues.length > 0) {
+            report.push('预检问题:');
+            preflight.issues.forEach(item => report.push(`- ${item}`));
+        } else {
+            report.push('预检结果: 通过');
+        }
+
+        let probeSummary = '';
+        try {
+            if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) throw new Error('NotSupportedError');
+
+            const stream = await navigator.mediaDevices.getDisplayMedia(getDisplayMediaConstraints(true));
+            const audioTracks = stream.getAudioTracks();
+            const videoTracks = stream.getVideoTracks();
+
+            report.push(`探测成功: videoTracks=${videoTracks.length}, audioTracks=${audioTracks.length}`);
+
+            if (audioTracks.length > 0) {
+                const t = audioTracks[0];
+                report.push(`音频轨道状态: readyState=${t.readyState}, enabled=${t.enabled}, muted=${t.muted}`);
+                probeSummary = '探测成功：浏览器可返回系统音频轨道。';
+            } else {
+                probeSummary = '探测完成：未返回音频轨道（通常是未勾选“分享系统音频”或环境限制）。';
+            }
+
+            stream.getTracks().forEach(track => track.stop());
+        } catch (err) {
+            const name = err?.name || 'UnknownError';
+            const message = err?.message || '';
+            report.push(`探测失败: ${name}${message ? ` - ${message}` : ''}`);
+
+            if (name === 'NotAllowedError') probeSummary = '探测失败：你取消了共享或未授权。';
+            else if (name === 'NotReadableError') probeSummary = '探测失败：系统音频源无法启动（驱动/占用/浏览器限制）。';
+            else probeSummary = `探测失败：${name}`;
+        }
+
+        report.push('建议动作:');
+        report.push('- 共享时选择“整个屏幕”并勾选“分享系统音频”');
+        report.push('- 关闭占用音频设备的软件（会议/录屏/音效增强）');
+        report.push('- Windows 播放设备属性中关闭“独占模式”');
+        report.push('- HTTP 场景下系统音频共享不稳定，优先改 HTTPS');
+
+        const reportText = report.join('\n');
+        console.log(reportText);
+
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(reportText);
+                alert(`${probeSummary}\n\n诊断报告已复制到剪贴板，并输出在控制台。`);
+            } else {
+                alert(`${probeSummary}\n\n诊断报告已输出到控制台（F12 查看并复制）。`);
+            }
+        } catch {
+            alert(`${probeSummary}\n\n诊断报告已输出到控制台（F12 查看并复制）。`);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
+
+    async function toggleScreen() {
+        if (!room) return;
+
+        try {
+            if (!isScreenOn) {
+                const resVal = document.getElementById('screen-res').value.split('x');
+                const customWidth = parseInt(resVal[0]);
+                const customHeight = parseInt(resVal[1]);
+                const customFps = parseInt(document.getElementById('screen-fps').value);
+                const customBitrate = parseInt(document.getElementById('screen-bitrate').value) * 1000;
+
+                const captureOptions = {
+                    audio: true,
+                    resolution: { width: customWidth, height: customHeight, frameRate: customFps }
+                };
+                
+                const publishOptions = {
+                    screenShareEncoding: { maxBitrate: customBitrate, maxFramerate: customFps },
+                    simulcast: false,
+                    videoCodec: 'h264'
+                };
+
+                let audioShareFailed = false;
+                let audioShareError = null;
+                const preflight = getSystemAudioPreflight();
+                const shouldTryAudio = preflight.canTryAudio && window.isSecureContext;
+
+                try {
+                    await room.localParticipant.setScreenShareEnabled(true, captureOptions, publishOptions);
+                } catch (err) {
+                    console.error('抓取屏幕音视频流失败:', err);
+                    audioShareFailed = true;
+                    audioShareError = err;
+                    
+                    const fallbackCaptureOptions = {
+                        audio: false,
+                        captureOptions: getDisplayMediaConstraints(false),
+                        resolution: { width: customWidth, height: customHeight, frameRate: customFps }
+                    };
+
+                    await room.localParticipant.setScreenShareEnabled(true, fallbackCaptureOptions, publishOptions);
+                }
+
+                const tracks = Array.from(room.localParticipant.videoTrackPublications.values());
+                tracks.forEach(pub => {
+                    if (pub.source === LivekitClient.Track.Source.ScreenShare && pub.track) {
+                        pub.track.mediaStreamTrack.contentHint = 'motion';
+                    }
+                });
+
+                isScreenOn = true;
+                const btn = document.getElementById('btn-screen');
+                btn.classList.add('active');
+                btn.innerHTML = '🛑 <span>停止共享</span>';
+                startScreenBitrateMonitor(customBitrate);
+                
+                document.getElementById('screen-res').disabled = true;
+                document.getElementById('screen-fps').disabled = true;
+                document.getElementById('screen-bitrate').disabled = true;
+
+                if (shouldTryAudio && !audioShareFailed && !hasPublishedScreenAudioTrack()) {
+                    audioShareFailed = true;
+                    audioShareError = { name: 'NotReadableError', message: 'Screen share started but no system-audio track was published' };
+                }
+
+                if (!shouldTryAudio && preflight.issues.length > 0) {
+                    alert(
+                        '已开启屏幕共享（仅画面）。\n\n' +
+                        '当前环境不满足系统音频共享条件：\n- ' + preflight.issues.join('\n- ') +
+                        '\n\n推荐方案：\n' +
+                        '1. 用 HTTPS 打开此页面（不要用 http://内网IP）；\n' +
+                        '2. 使用最新版 Chrome/Edge；\n' +
+                        '3. 重新共享时选择“整个屏幕”并勾选“分享系统音频”。'
+                    );
+                } else if (audioShareFailed) {
+                    alert(
+                        '已开启屏幕共享（仅画面）。\n\n' +
+                        getShareAudioErrorMessage(audioShareError) +
+                        '\n\n如需共享系统声音，请确认：\n' +
+                        '1. 选择“整个屏幕”而不是“窗口”；\n' +
+                        '2. 勾选“分享系统音频”；\n' +
+                        '3. 关闭可能独占音频设备的软件后重试；\n' +
+                        '4. Windows 声音设置中关闭播放设备“独占模式”；\n' +
+                        '5. 尽量改为 HTTPS 访问页面（http://内网IP 常见失败）。'
+                    );
+                }
+            } else {
+                await room.localParticipant.setScreenShareEnabled(false);
+                isScreenOn = false;
+                const btn = document.getElementById('btn-screen');
+                btn.classList.remove('active');
+                btn.innerHTML = '💻 <span>共享屏幕</span>';
+                stopScreenBitrateMonitor();
+                
+                document.getElementById('screen-res').disabled = false;
+                document.getElementById('screen-fps').disabled = false;
+                document.getElementById('screen-bitrate').disabled = false;
+            }
+        } catch (e) {
+            console.error('屏幕共享未知错误', e);
+            isScreenOn = false;
+            stopScreenBitrateMonitor();
+            document.getElementById('screen-res').disabled = false;
+            document.getElementById('screen-fps').disabled = false;
+            document.getElementById('screen-bitrate').disabled = false;
+        }
+    }
+
+    function leaveRoom() {
+        stopScreenBitrateMonitor();
+        if(room) room.disconnect();
+        window.location.reload(); 
+    }
+
+    async function sendChatMessage() {
+        if (!room || !room.localParticipant) return;
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        
+        try {
+            const data = JSON.stringify({ msg: text });
+            await room.localParticipant.publishData(new TextEncoder().encode(data), { reliable: true });
+            
+            const myName = room.localParticipant.name || room.localParticipant.identity;
+            renderChatMessage(myName, text, true);
+            input.value = '';
+        } catch (e) {
+            console.error('发送消息失败:', e);
+        }
+    }
+
+    function renderChatMessage(sender, text, isSelf) {
+        const messagesDiv = document.getElementById('chat-messages');
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-message' + (isSelf ? ' self' : '');
+        
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        
+        msgEl.innerHTML = `
+            <div class="chat-meta">${sender} ${timeStr}</div>
+            <div class="chat-content">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        `;
+        messagesDiv.appendChild(msgEl);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+</script>
+</body>
+</html>

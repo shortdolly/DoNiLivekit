@@ -1,0 +1,14 @@
+# 忽略所有可执行文件
+*.exe
+
+# 忽略 Python 编译和打包生成的文件夹
+__pycache__/
+build/
+dist/
+*.spec
+
+# 忽略编辑器配置
+.vscode/
+
+# 忽略日志文件
+*.log
