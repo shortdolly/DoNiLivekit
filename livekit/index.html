@@ -13,6 +13,13 @@
         /* 左侧边栏 */
         #sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; padding: 20px; border-right: 1px solid #1e1f22; }
         .sidebar-title { font-size: 14px; font-weight: bold; color: #f2f3f5; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 10px; }
+        .tiny-btn { width: 24px; height: 24px; border-radius: 50%; border: none; background: #404249; color: #fff; cursor: pointer; font-weight: 700; }
+        .tiny-btn:hover { background: #5865f2; }
+        #channel-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        .channel-item { border: none; border-radius: 6px; background: #313338; color: #dbdee1; text-align: left; padding: 8px 10px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .channel-item:hover { background: #404249; }
+        .channel-item.active { background: #5865f2; color: #fff; }
         .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
         input { padding: 12px; border-radius: 6px; border: none; background-color: #1e1f22; color: #dbdee1; font-size: 14px; outline: none; }
         input:focus { box-shadow: 0 0 0 2px #5865F2; }
@@ -212,8 +219,13 @@
         <div class="input-group" id="login-section">
             <input type="text" id="server-ip" placeholder="服务器IP:端口，例如 10.126.126.10:5000">
             <input type="text" id="username" placeholder="请输入你的开黑昵称...">
-            <button id="btn-connect" class="primary-btn" onclick="joinRoom()">加入频道</button>
+            <button id="btn-connect" class="primary-btn" onclick="joinRoom()">进入大厅</button>
         </div>
+        <div class="section-title-row">
+            <div class="sidebar-title" style="margin: 0;">🔊 语音分组</div>
+            <button class="tiny-btn" onclick="createChannel()" title="创建频道">+</button>
+        </div>
+        <div id="channel-list"></div>
         <div class="sidebar-title" style="margin-top: 10px;">👥 在线成员 (<span id="user-count">0</span>)</div>
         <div id="participant-list">
             <div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 20px;">加入频道后显示在线人员</div>
@@ -288,6 +300,9 @@
 <script>
     const DEFAULT_SERVER_IP = '10.126.126.10:5000';
     let room;
+    let currentChannel = null;
+    let isInLobby = false;
+    const channels = ['day0', 'day1', 'day2'];
     let isMicOn = false;
     let isScreenOn = false;
     let isNoiseSuppressionOn = true;
@@ -297,6 +312,8 @@
     let currentScreenTargetBitrate = 0;
     const localScreenControls = {};
     let currentLocalScreenTrack = null;
+    let remoteAudioContext = null;
+    const remoteAudioGainNodes = {};
 
     function isScreenShareSource(source) {
         return source === LivekitClient.Track.Source.ScreenShare || source === 'screen_share';
@@ -357,6 +374,8 @@
             btn.innerHTML = isNoiseSuppressionOn ? '🔊 <span>降噪: 开</span>' : '📢 <span>降噪: 关</span>';
             btn.classList.toggle('active', !isNoiseSuppressionOn);
         }
+
+        renderChannelList();
     });
 
     function normalizeServerInput(rawValue) {
@@ -386,13 +405,88 @@
         return { apiBase, livekitWs, persistValue: `${host}:${apiPort}` };
     }
 
+    function ensureAudioContext() {
+        if (!remoteAudioContext) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) remoteAudioContext = new Ctx();
+        }
+        if (remoteAudioContext && remoteAudioContext.state === 'suspended') {
+            remoteAudioContext.resume().catch(() => {});
+        }
+    }
+
+    function addRemoteGainNode(identity, source, audioEl) {
+        ensureAudioContext();
+        if (!remoteAudioContext) return;
+        if (!audioEl.__gainAttached) {
+            const srcNode = remoteAudioContext.createMediaElementSource(audioEl);
+            const gainNode = remoteAudioContext.createGain();
+            srcNode.connect(gainNode).connect(remoteAudioContext.destination);
+            audioEl.__gainAttached = true;
+            audioEl.__gainNode = gainNode;
+        }
+
+        const key = `${identity}:${source}`;
+        if (!remoteAudioGainNodes[key]) remoteAudioGainNodes[key] = [];
+        remoteAudioGainNodes[key].push(audioEl.__gainNode);
+        const gain = userVolumes[identity] && userVolumes[identity][source] !== undefined ? userVolumes[identity][source] : 1;
+        audioEl.__gainNode.gain.value = gain;
+    }
+
+    function clearRemoteGainNodes() {
+        Object.keys(remoteAudioGainNodes).forEach(key => delete remoteAudioGainNodes[key]);
+    }
+
+    function renderChannelList() {
+        const list = document.getElementById('channel-list');
+        if (!list) return;
+        list.innerHTML = channels.map(name => {
+            const active = currentChannel === name ? 'active' : '';
+            return `<button class="channel-item ${active}" onclick="switchChannel('${name}')"># ${name}</button>`;
+        }).join('');
+    }
+
+    async function createChannel() {
+        const value = prompt('输入新频道名（英文字母/数字/短横线）:');
+        if (!value) return;
+        const name = value.trim();
+        if (!name) return;
+        if (channels.includes(name)) {
+            return switchChannel(name);
+        }
+        channels.push(name);
+        renderChannelList();
+        await switchChannel(name);
+    }
+
+    function resetRoomUIAfterDisconnect() {
+        document.getElementById('video-container').innerHTML = '';
+        document.getElementById('audio-container').innerHTML = '';
+        document.getElementById('participant-list').innerHTML = '<div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 20px;">加入频道后显示在线人员</div>';
+        document.getElementById('user-count').innerText = '0';
+        document.getElementById('btn-mic').disabled = true;
+        document.getElementById('btn-noise').disabled = true;
+        document.getElementById('mic-select').disabled = true;
+        document.getElementById('btn-screen').disabled = true;
+        document.getElementById('screen-res').disabled = true;
+        document.getElementById('screen-fps').disabled = true;
+        document.getElementById('screen-bitrate').disabled = true;
+        document.getElementById('chat-input').disabled = true;
+        document.getElementById('btn-send').disabled = true;
+        isMicOn = false;
+        isScreenOn = false;
+        clearRemoteGainNodes();
+        hideLocalScreenPreview();
+    }
+
     function setParticipantVolume(identity, source, volumeValue) {
         if (!userVolumes[identity]) {
             userVolumes[identity] = { mic: 1, screen: 1 };
         }
         userVolumes[identity][source] = parseFloat(volumeValue);
-        const audioEls = document.querySelectorAll(`audio[data-audio-identity="${identity}"][data-audio-source="${source}"]`);
-        audioEls.forEach(el => { el.volume = userVolumes[identity][source]; });
+        const key = `${identity}:${source}`;
+        const gains = remoteAudioGainNodes[key] || [];
+        gains.forEach(node => { node.gain.value = userVolumes[identity][source]; });
     }
 
     function getMicCaptureOptions() {
@@ -421,12 +515,12 @@
             let volumeControlsHTML = '';
             if (!isSelf) {
                 const micVol = userVolumes[p.identity].mic;
-                volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="麦克风音量">🎤</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${micVol}" oninput="setParticipantVolume('${p.identity}', 'mic', this.value)"></div>`;
+                volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="麦克风音量">🎤</span><input type="range" class="volume-slider" min="0" max="3" step="0.05" value="${micVol}" oninput="setParticipantVolume('${p.identity}', 'mic', this.value);this.nextElementSibling.innerText=Math.round(this.value*100)+'%'"><span style="width:38px; text-align:right; color:#b5bac1;">${Math.round(micVol*100)}%</span></div>`;
                 
                 const hasScreenAudio = Array.from(p.audioTrackPublications.values()).some(pub => pub.source === LivekitClient.Track.Source.ScreenShareAudio || pub.source === 'screen_share_audio');
                 if (hasScreenAudio) {
                     const screenVol = userVolumes[p.identity].screen;
-                    volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="共享音量">💻</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${screenVol}" oninput="setParticipantVolume('${p.identity}', 'screen', this.value)"></div>`;
+                    volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="共享音量">💻</span><input type="range" class="volume-slider" min="0" max="3" step="0.05" value="${screenVol}" oninput="setParticipantVolume('${p.identity}', 'screen', this.value);this.nextElementSibling.innerText=Math.round(this.value*100)+'%'"><span style="width:38px; text-align:right; color:#b5bac1;">${Math.round(screenVol*100)}%</span></div>`;
                 }
             }
 
@@ -488,8 +582,39 @@
         const serverConfig = getServerConfig();
         localStorage.setItem('lk_server_ip', serverConfig.persistValue);
 
+        isInLobby = true;
+        document.getElementById('btn-connect').innerText = '🏛️ 已进入大厅';
+        document.getElementById('btn-connect').style.backgroundColor = '#1a6334';
+        document.getElementById('header').innerText = '# 🏛️ DoNiChannel 电竞大厅（选择左侧语音分组）';
+        renderChannelList();
+    }
+
+    async function switchChannel(roomName) {
+        if (!isInLobby) {
+            await joinRoom();
+            if (!isInLobby) return;
+        }
+
+        if (currentChannel === roomName && room) return;
+
+        if (room) {
+            room.disconnect();
+            room = null;
+            resetRoomUIAfterDisconnect();
+        }
+
+        currentChannel = roomName;
+        renderChannelList();
+        await connectToChannel(roomName);
+    }
+
+    async function connectToChannel(targetRoomName) {
+        const username = document.getElementById('username').value.trim();
+        if (!username) return;
+        const serverConfig = getServerConfig();
+
         try {
-            const response = await fetch(`${serverConfig.apiBase}/api/get_token?user=${encodeURIComponent(username)}`);
+            const response = await fetch(`${serverConfig.apiBase}/api/get_token?user=${encodeURIComponent(username)}&room=${encodeURIComponent(targetRoomName)}`);
             const data = await response.json();
             const token = data.token;
 
@@ -570,7 +695,9 @@
                     if (!userVolumes[participant.identity]) {
                         userVolumes[participant.identity] = { mic: 1, screen: 1 };
                     }
-                    audioEl.volume = userVolumes[participant.identity][source];
+                    // 交给 GainNode 处理，支持 100% 以上的本地增益
+                    audioEl.volume = 1;
+                    addRemoteGainNode(participant.identity, source, audioEl);
                     
                     document.getElementById('audio-container').appendChild(audioEl);
                 }
@@ -641,10 +768,8 @@
             });
 
             await room.connect(serverConfig.livekitWs, token);
+            document.getElementById('header').innerText = `# 🔊 ${targetRoomName} 语音分组`;
             
-            document.getElementById('btn-connect').disabled = true;
-            document.getElementById('btn-connect').innerText = '🟢 已连接';
-            document.getElementById('btn-connect').style.backgroundColor = '#1a6334';
             document.getElementById('username').disabled = true;
             
             document.getElementById('btn-mic').disabled = false;
@@ -674,8 +799,11 @@
             await updateMicList();
 
         } catch (error) {
-            console.error('连接失败:', error);
+            console.error('频道连接失败:', error);
             alert('连接服务器失败，请检查网络。');
+            currentChannel = null;
+            renderChannelList();
+            document.getElementById('header').innerText = '# 🏛️ DoNiChannel 电竞大厅（连接失败，请重试）';
         }
     }
 

@@ -13,6 +13,13 @@
         /* 左侧边栏 */
         #sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; padding: 20px; border-right: 1px solid #1e1f22; }
         .sidebar-title { font-size: 14px; font-weight: bold; color: #f2f3f5; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 10px; }
+        .tiny-btn { width: 24px; height: 24px; border-radius: 50%; border: none; background: #404249; color: #fff; cursor: pointer; font-weight: 700; }
+        .tiny-btn:hover { background: #5865f2; }
+        #channel-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        .channel-item { border: none; border-radius: 6px; background: #313338; color: #dbdee1; text-align: left; padding: 8px 10px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .channel-item:hover { background: #404249; }
+        .channel-item.active { background: #5865f2; color: #fff; }
         .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
         input { padding: 12px; border-radius: 6px; border: none; background-color: #1e1f22; color: #dbdee1; font-size: 14px; outline: none; }
         input:focus { box-shadow: 0 0 0 2px #5865F2; }
@@ -95,18 +102,97 @@
             backdrop-filter: blur(4px); /* 加一点高贵的毛玻璃效果 */
         }
 
+        .screen-local-toggle-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: rgba(242, 63, 66, 0.9);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 10px;
+            cursor: pointer;
+            z-index: 12;
+        }
+
+        .screen-restore-card {
+            flex: 1 1 40%;
+            min-width: 320px;
+            max-width: 48%;
+            max-height: 120px;
+            border-radius: 8px;
+            background-color: #1b1c1f;
+            border: 1px solid #3b3d44;
+            color: #dbdee1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px;
+            gap: 12px;
+        }
+
+        .screen-restore-card button {
+            border: none;
+            border-radius: 6px;
+            background-color: #248046;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        #local-screen-preview-box {
+            position: absolute;
+            right: 16px;
+            bottom: 96px;
+            width: 300px;
+            height: 180px;
+            background-color: #0f1012;
+            border: 1px solid #3b3d44;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 20;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.45);
+        }
+
+        #local-screen-preview-title {
+            height: 28px;
+            line-height: 28px;
+            padding: 0 10px;
+            font-size: 12px;
+            color: #b5bac1;
+            background-color: #1b1c1f;
+            border-bottom: 1px solid #2b2d31;
+        }
+
+        #local-screen-preview {
+            width: 100%;
+            height: calc(100% - 28px);
+            object-fit: contain;
+            background-color: #000;
+        }
+
         /* 底部控制台与设备选择区 */
-        #controls-bar { height: 80px; background-color: #2b2d31; display: flex; justify-content: center; align-items: center; gap: 20px; padding: 0 20px; border-top: 1px solid #1e1f22; flex-shrink: 0; }
-        .mic-control-group { display: flex; align-items: center; background-color: #313338; border-radius: 24px; padding: 4px 12px; gap: 10px; }
-        select { background-color: #1e1f22; color: #dbdee1; border: 1px solid #1e1f22; padding: 8px 10px; border-radius: 12px; outline: none; font-size: 13px; max-width: 160px; cursor: pointer; transition: border-color 0.2s; }
+        #controls-bar { min-height: 80px; background-color: #2b2d31; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; padding: 10px 20px; border-top: 1px solid #1e1f22; flex-shrink: 0; }
+        .mic-control-group { display: flex; align-items: center; flex-wrap: nowrap; background-color: #313338; border-radius: 24px; padding: 4px 12px; gap: 10px; min-width: 0; }
+        select { background-color: #1e1f22; color: #dbdee1; border: 1px solid #1e1f22; padding: 8px 10px; border-radius: 12px; outline: none; font-size: 13px; max-width: 180px; cursor: pointer; transition: border-color 0.2s; white-space: nowrap; flex-shrink: 0; }
         select:hover:not(:disabled) { border-color: #5865F2; }
         select:disabled { cursor: not-allowed; opacity: 0.5; }
-        .action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #313338; color: #dbdee1; border: none; padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+        .action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #313338; color: #dbdee1; border: none; padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+        .action-btn span { white-space: nowrap; }
         .action-btn:hover:not(:disabled) { background-color: #404249; color: white; }
         .action-btn.active { background-color: #f23f42; color: white; }
         .mic-control-group .action-btn { background-color: transparent; padding: 8px 12px; }
         .mic-control-group .action-btn:hover:not(:disabled) { background-color: #404249; }
         .mic-control-group .action-btn.active { background-color: #f23f42; }
+
+        @media (max-width: 1200px) {
+            #controls-bar { justify-content: flex-start; }
+        }
 
         #audio-container { display: none; }
 
@@ -131,9 +217,15 @@
     <div id="sidebar">
         <div class="sidebar-title">📡 频道登录</div>
         <div class="input-group" id="login-section">
+            <input type="text" id="server-ip" placeholder="服务器IP:端口，例如 10.126.126.10:5000">
             <input type="text" id="username" placeholder="请输入你的开黑昵称...">
-            <button id="btn-connect" class="primary-btn" onclick="joinRoom()">加入频道</button>
+            <button id="btn-connect" class="primary-btn" onclick="joinRoom()">进入大厅</button>
         </div>
+        <div class="section-title-row">
+            <div class="sidebar-title" style="margin: 0;">🔊 语音分组</div>
+            <button class="tiny-btn" onclick="createChannel()" title="创建频道">+</button>
+        </div>
+        <div id="channel-list"></div>
         <div class="sidebar-title" style="margin-top: 10px;">👥 在线成员 (<span id="user-count">0</span>)</div>
         <div id="participant-list">
             <div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 20px;">加入频道后显示在线人员</div>
@@ -144,6 +236,10 @@
         <div id="header"># 🎮 直播与共享大厅</div>
         <div id="video-container"></div>
         <div id="audio-container"></div>
+        <div id="local-screen-preview-box">
+            <div id="local-screen-preview-title">本地屏幕预览（静音）</div>
+            <video id="local-screen-preview" muted autoplay playsinline></video>
+        </div>
 
         <div id="controls-bar">
             <div class="mic-control-group">
@@ -202,8 +298,11 @@
     </div>
 
 <script>
-    const LIVEKIT_URL = 'ws://10.126.126.10:7880';
+    const DEFAULT_SERVER_IP = '10.126.126.10:5000';
     let room;
+    let currentChannel = null;
+    let isInLobby = false;
+    const channels = ['day0', 'day1', 'day2'];
     let isMicOn = false;
     let isScreenOn = false;
     let isNoiseSuppressionOn = true;
@@ -211,11 +310,62 @@
     let screenBitrateMonitorTimer = null;
     let lastScreenOutboundStats = null;
     let currentScreenTargetBitrate = 0;
+    const localScreenControls = {};
+    let currentLocalScreenTrack = null;
+    let remoteAudioContext = null;
+    const remoteAudioGainNodes = {};
+
+    function isScreenShareSource(source) {
+        return source === LivekitClient.Track.Source.ScreenShare || source === 'screen_share';
+    }
+
+    function removeLocalScreenRestoreCard(identity) {
+        const card = document.getElementById(`screen-restore-${identity}`);
+        if (card) card.remove();
+    }
+
+    function upsertLocalScreenRestoreCard(identity, displayName) {
+        let card = document.getElementById(`screen-restore-${identity}`);
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'screen-restore-card';
+            card.id = `screen-restore-${identity}`;
+            document.getElementById('video-container').appendChild(card);
+        }
+
+        card.innerHTML = `
+            <div>${displayName} 的屏幕已在本地屏蔽</div>
+            <button onclick="toggleLocalScreenSubscription('${identity}')">恢复屏幕</button>
+        `;
+    }
+
+    async function toggleLocalScreenSubscription(identity) {
+        const state = localScreenControls[identity];
+        if (!state || !state.publication) return;
+
+        try {
+            if (!state.isBlocked) {
+                await state.publication.setSubscribed(false);
+                state.isBlocked = true;
+                upsertLocalScreenRestoreCard(identity, state.displayName || identity);
+            } else {
+                await state.publication.setSubscribed(true);
+                state.isBlocked = false;
+                removeLocalScreenRestoreCard(identity);
+            }
+        } catch (e) {
+            console.error('切换本地屏幕订阅状态失败:', e);
+            alert('操作失败，请稍后重试。');
+        }
+    }
 
     // DOM加载完毕后恢复本地设置
     document.addEventListener('DOMContentLoaded', () => {
         const savedUser = localStorage.getItem('lk_username');
         if (savedUser) document.getElementById('username').value = savedUser;
+
+        const savedServerIp = localStorage.getItem('lk_server_ip');
+        document.getElementById('server-ip').value = savedServerIp || DEFAULT_SERVER_IP;
         
         const savedNoise = localStorage.getItem('lk_noise');
         if (savedNoise !== null) {
@@ -224,15 +374,119 @@
             btn.innerHTML = isNoiseSuppressionOn ? '🔊 <span>降噪: 开</span>' : '📢 <span>降噪: 关</span>';
             btn.classList.toggle('active', !isNoiseSuppressionOn);
         }
+
+        renderChannelList();
     });
+
+    function normalizeServerInput(rawValue) {
+        let val = (rawValue || '').trim();
+        if (!val) return DEFAULT_SERVER_IP;
+        val = val.replace(/^https?:\/\//i, '').replace(/^wss?:\/\//i, '');
+        val = val.replace(/\/$/, '');
+        return val;
+    }
+
+    function getServerConfig() {
+        const inputEl = document.getElementById('server-ip');
+        const normalized = normalizeServerInput(inputEl ? inputEl.value : '');
+
+        // token服务默认走输入端口；LiveKit默认在同IP下7880
+        let host = normalized;
+        let apiPort = '5000';
+
+        if (normalized.includes(':')) {
+            const parts = normalized.split(':');
+            host = parts[0];
+            apiPort = parts[1] || '5000';
+        }
+
+        const apiBase = `http://${host}:${apiPort}`;
+        const livekitWs = `ws://${host}:7880`;
+        return { apiBase, livekitWs, persistValue: `${host}:${apiPort}` };
+    }
+
+    function ensureAudioContext() {
+        if (!remoteAudioContext) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) remoteAudioContext = new Ctx();
+        }
+        if (remoteAudioContext && remoteAudioContext.state === 'suspended') {
+            remoteAudioContext.resume().catch(() => {});
+        }
+    }
+
+    function addRemoteGainNode(identity, source, audioEl) {
+        ensureAudioContext();
+        if (!remoteAudioContext) return;
+        if (!audioEl.__gainAttached) {
+            const srcNode = remoteAudioContext.createMediaElementSource(audioEl);
+            const gainNode = remoteAudioContext.createGain();
+            srcNode.connect(gainNode).connect(remoteAudioContext.destination);
+            audioEl.__gainAttached = true;
+            audioEl.__gainNode = gainNode;
+        }
+
+        const key = `${identity}:${source}`;
+        if (!remoteAudioGainNodes[key]) remoteAudioGainNodes[key] = [];
+        remoteAudioGainNodes[key].push(audioEl.__gainNode);
+        const gain = userVolumes[identity] && userVolumes[identity][source] !== undefined ? userVolumes[identity][source] : 1;
+        audioEl.__gainNode.gain.value = gain;
+    }
+
+    function clearRemoteGainNodes() {
+        Object.keys(remoteAudioGainNodes).forEach(key => delete remoteAudioGainNodes[key]);
+    }
+
+    function renderChannelList() {
+        const list = document.getElementById('channel-list');
+        if (!list) return;
+        list.innerHTML = channels.map(name => {
+            const active = currentChannel === name ? 'active' : '';
+            return `<button class="channel-item ${active}" onclick="switchChannel('${name}')"># ${name}</button>`;
+        }).join('');
+    }
+
+    async function createChannel() {
+        const value = prompt('输入新频道名（英文字母/数字/短横线）:');
+        if (!value) return;
+        const name = value.trim();
+        if (!name) return;
+        if (channels.includes(name)) {
+            return switchChannel(name);
+        }
+        channels.push(name);
+        renderChannelList();
+        await switchChannel(name);
+    }
+
+    function resetRoomUIAfterDisconnect() {
+        document.getElementById('video-container').innerHTML = '';
+        document.getElementById('audio-container').innerHTML = '';
+        document.getElementById('participant-list').innerHTML = '<div style="font-size: 12px; color: #80848e; text-align: center; margin-top: 20px;">加入频道后显示在线人员</div>';
+        document.getElementById('user-count').innerText = '0';
+        document.getElementById('btn-mic').disabled = true;
+        document.getElementById('btn-noise').disabled = true;
+        document.getElementById('mic-select').disabled = true;
+        document.getElementById('btn-screen').disabled = true;
+        document.getElementById('screen-res').disabled = true;
+        document.getElementById('screen-fps').disabled = true;
+        document.getElementById('screen-bitrate').disabled = true;
+        document.getElementById('chat-input').disabled = true;
+        document.getElementById('btn-send').disabled = true;
+        isMicOn = false;
+        isScreenOn = false;
+        clearRemoteGainNodes();
+        hideLocalScreenPreview();
+    }
 
     function setParticipantVolume(identity, source, volumeValue) {
         if (!userVolumes[identity]) {
             userVolumes[identity] = { mic: 1, screen: 1 };
         }
         userVolumes[identity][source] = parseFloat(volumeValue);
-        const audioEls = document.querySelectorAll(`audio[data-audio-identity="${identity}"][data-audio-source="${source}"]`);
-        audioEls.forEach(el => { el.volume = userVolumes[identity][source]; });
+        const key = `${identity}:${source}`;
+        const gains = remoteAudioGainNodes[key] || [];
+        gains.forEach(node => { node.gain.value = userVolumes[identity][source]; });
     }
 
     function getMicCaptureOptions() {
@@ -261,12 +515,12 @@
             let volumeControlsHTML = '';
             if (!isSelf) {
                 const micVol = userVolumes[p.identity].mic;
-                volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="麦克风音量">🎤</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${micVol}" oninput="setParticipantVolume('${p.identity}', 'mic', this.value)"></div>`;
+                volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="麦克风音量">🎤</span><input type="range" class="volume-slider" min="0" max="3" step="0.05" value="${micVol}" oninput="setParticipantVolume('${p.identity}', 'mic', this.value);this.nextElementSibling.innerText=Math.round(this.value*100)+'%'"><span style="width:38px; text-align:right; color:#b5bac1;">${Math.round(micVol*100)}%</span></div>`;
                 
                 const hasScreenAudio = Array.from(p.audioTrackPublications.values()).some(pub => pub.source === LivekitClient.Track.Source.ScreenShareAudio || pub.source === 'screen_share_audio');
                 if (hasScreenAudio) {
                     const screenVol = userVolumes[p.identity].screen;
-                    volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="共享音量">💻</span> <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="${screenVol}" oninput="setParticipantVolume('${p.identity}', 'screen', this.value)"></div>`;
+                    volumeControlsHTML += `<div style="display: flex; align-items: center; gap: 5px; font-size: 12px;"><span title="共享音量">💻</span><input type="range" class="volume-slider" min="0" max="3" step="0.05" value="${screenVol}" oninput="setParticipantVolume('${p.identity}', 'screen', this.value);this.nextElementSibling.innerText=Math.round(this.value*100)+'%'"><span style="width:38px; text-align:right; color:#b5bac1;">${Math.round(screenVol*100)}%</span></div>`;
                 }
             }
 
@@ -325,22 +579,58 @@
         if (!username) return alert('起个响亮的名字吧！');
 
         localStorage.setItem('lk_username', username);
+        const serverConfig = getServerConfig();
+        localStorage.setItem('lk_server_ip', serverConfig.persistValue);
+
+        isInLobby = true;
+        document.getElementById('btn-connect').innerText = '🏛️ 已进入大厅';
+        document.getElementById('btn-connect').style.backgroundColor = '#1a6334';
+        document.getElementById('header').innerText = '# 🏛️ DoNiChannel 电竞大厅（选择左侧语音分组）';
+        renderChannelList();
+    }
+
+    async function switchChannel(roomName) {
+        if (!isInLobby) {
+            await joinRoom();
+            if (!isInLobby) return;
+        }
+
+        if (currentChannel === roomName && room) return;
+
+        if (room) {
+            room.disconnect();
+            room = null;
+            resetRoomUIAfterDisconnect();
+        }
+
+        currentChannel = roomName;
+        renderChannelList();
+        await connectToChannel(roomName);
+    }
+
+    async function connectToChannel(targetRoomName) {
+        const username = document.getElementById('username').value.trim();
+        if (!username) return;
+        const serverConfig = getServerConfig();
 
         try {
-            const response = await fetch(`/api/get_token?user=${encodeURIComponent(username)}`);
+            const response = await fetch(`${serverConfig.apiBase}/api/get_token?user=${encodeURIComponent(username)}&room=${encodeURIComponent(targetRoomName)}`);
             const data = await response.json();
             const token = data.token;
 
             room = new LivekitClient.Room({
                 audioCaptureDefaults: getMicCaptureOptions(),
                 publishDefaults: {
-                    videoCodec: 'h264'
+                    videoCodec: 'h264',
+                    // 全局音频发布默认走高音质音乐预设（麦克风/系统音频均受益）
+                    audioPreset: (LivekitClient.AudioPresets && (LivekitClient.AudioPresets.musicHighQuality || LivekitClient.AudioPresets.music)) || undefined
                 }
             });
 
             // 🌟 核心修改：接收到视频流时，包装盒子并打上名字标签
             room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
                 if (track.kind === 'video') {
+                    const isRemoteScreen = isScreenShareSource(publication?.source) && participant?.identity !== room.localParticipant?.identity;
                     const videoEl = track.attach();
                     
                     // 创建包装盒
@@ -357,6 +647,26 @@
                     const nameLabel = document.createElement('div');
                     nameLabel.className = 'video-name-label';
                     nameLabel.innerText = `${displayName} 的屏幕`;
+
+                    // 本地屏蔽按钮：仅对远端屏幕共享显示，点击后取消订阅以节省本地带宽
+                    if (isRemoteScreen) {
+                        localScreenControls[participant.identity] = {
+                            publication,
+                            displayName,
+                            isBlocked: false
+                        };
+
+                        removeLocalScreenRestoreCard(participant.identity);
+
+                        const toggleBtn = document.createElement('button');
+                        toggleBtn.className = 'screen-local-toggle-btn';
+                        toggleBtn.innerText = '屏蔽屏幕';
+                        toggleBtn.onclick = async (event) => {
+                            event.stopPropagation();
+                            await toggleLocalScreenSubscription(participant.identity);
+                        };
+                        wrapper.appendChild(toggleBtn);
+                    }
                     
                     // 双击全屏事件现在绑定在包装盒上（这样全屏时名字标签也能显示！）
                     wrapper.ondblclick = () => {
@@ -385,7 +695,9 @@
                     if (!userVolumes[participant.identity]) {
                         userVolumes[participant.identity] = { mic: 1, screen: 1 };
                     }
-                    audioEl.volume = userVolumes[participant.identity][source];
+                    // 交给 GainNode 处理，支持 100% 以上的本地增益
+                    audioEl.volume = 1;
+                    addRemoteGainNode(participant.identity, source, audioEl);
                     
                     document.getElementById('audio-container').appendChild(audioEl);
                 }
@@ -398,12 +710,16 @@
                 // 精准狙击并删除对应的包装盒
                 const wrapper = document.getElementById('video-wrapper-' + track.sid);
                 if (wrapper) wrapper.remove();
+
+                // 如果是本地手动屏蔽导致的取消订阅，保留恢复卡片；其它情况不处理
             });
 
             // 退出房间暴力清场，利用之前的 dataset 删除整个盒子
             room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
                 document.querySelectorAll(`[data-video-identity="${participant.identity}"]`).forEach(el => el.remove());
                 document.querySelectorAll(`[data-audio-identity="${participant.identity}"]`).forEach(el => el.remove());
+                removeLocalScreenRestoreCard(participant.identity);
+                delete localScreenControls[participant.identity];
                 updateParticipantList();
             });
 
@@ -414,8 +730,31 @@
             room.on(LivekitClient.RoomEvent.TrackUnmuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
             room.on(LivekitClient.RoomEvent.LocalTrackMuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
             room.on(LivekitClient.RoomEvent.LocalTrackUnmuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.LocalTrackPublished, (pub) => {
+                if (isScreenShareSource(pub?.source) && pub.track) {
+                    showLocalScreenPreview(pub.track);
+                }
+            });
+            room.on(LivekitClient.RoomEvent.LocalTrackUnpublished, (pub) => {
+                if (isScreenShareSource(pub?.source)) {
+                    hideLocalScreenPreview();
+                }
+            });
             room.on(LivekitClient.RoomEvent.TrackPublished, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
-            room.on(LivekitClient.RoomEvent.TrackUnpublished, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
+            room.on(LivekitClient.RoomEvent.TrackUnpublished, (pub, participant) => {
+                if(pub.kind === 'audio') updateParticipantList();
+
+                if (isScreenShareSource(pub?.source)) {
+                    const identity = participant?.identity || Object.keys(localScreenControls).find(key => {
+                        return localScreenControls[key]?.publication?.trackSid === pub?.trackSid;
+                    });
+
+                    if (identity) {
+                        removeLocalScreenRestoreCard(identity);
+                        delete localScreenControls[identity];
+                    }
+                }
+            });
 
             // 监听文字聊天消息
             room.on(LivekitClient.RoomEvent.DataReceived, (payload, participant) => {
@@ -428,11 +767,9 @@
                 } catch(e) { console.error('Data channel 解析失败:', e); }
             });
 
-            await room.connect(LIVEKIT_URL, token);
+            await room.connect(serverConfig.livekitWs, token);
+            document.getElementById('header').innerText = `# 🔊 ${targetRoomName} 语音分组`;
             
-            document.getElementById('btn-connect').disabled = true;
-            document.getElementById('btn-connect').innerText = '🟢 已连接';
-            document.getElementById('btn-connect').style.backgroundColor = '#1a6334';
             document.getElementById('username').disabled = true;
             
             document.getElementById('btn-mic').disabled = false;
@@ -462,8 +799,11 @@
             await updateMicList();
 
         } catch (error) {
-            console.error('连接失败:', error);
+            console.error('频道连接失败:', error);
             alert('连接服务器失败，请检查网络。');
+            currentChannel = null;
+            renderChannelList();
+            document.getElementById('header').innerText = '# 🏛️ DoNiChannel 电竞大厅（连接失败，请重试）';
         }
     }
 
@@ -555,6 +895,36 @@
             const source = pub?.source;
             return source === LivekitClient.Track.Source.ScreenShare || source === 'screen_share';
         }) || null;
+    }
+
+    function showLocalScreenPreview(track) {
+        const previewBox = document.getElementById('local-screen-preview-box');
+        const previewVideo = document.getElementById('local-screen-preview');
+        if (!previewBox || !previewVideo || !track) return;
+
+        previewVideo.muted = true;
+
+        if (currentLocalScreenTrack && currentLocalScreenTrack !== track) {
+            currentLocalScreenTrack.detach(previewVideo);
+        }
+
+        track.attach(previewVideo);
+        currentLocalScreenTrack = track;
+        previewBox.style.display = 'block';
+    }
+
+    function hideLocalScreenPreview() {
+        const previewBox = document.getElementById('local-screen-preview-box');
+        const previewVideo = document.getElementById('local-screen-preview');
+        if (!previewBox || !previewVideo) return;
+
+        if (currentLocalScreenTrack) {
+            currentLocalScreenTrack.detach(previewVideo);
+            currentLocalScreenTrack = null;
+        }
+
+        previewVideo.srcObject = null;
+        previewBox.style.display = 'none';
     }
 
     function stopScreenBitrateMonitor() {
@@ -726,13 +1096,17 @@
 
                 const captureOptions = {
                     audio: true,
+                    // 显式使用 getDisplayMedia 音频约束，禁用麦克风向的音频处理，避免系统音频发闷/忽大忽小
+                    captureOptions: getDisplayMediaConstraints(true),
                     resolution: { width: customWidth, height: customHeight, frameRate: customFps }
                 };
                 
                 const publishOptions = {
                     screenShareEncoding: { maxBitrate: customBitrate, maxFramerate: customFps },
                     simulcast: false,
-                    videoCodec: 'h264'
+                    videoCodec: 'h264',
+                    // 屏幕共享音频轨道优先使用高音质音乐预设
+                    audioPreset: (LivekitClient.AudioPresets && (LivekitClient.AudioPresets.musicHighQuality || LivekitClient.AudioPresets.music)) || undefined
                 };
 
                 let audioShareFailed = false;
@@ -762,6 +1136,11 @@
                         pub.track.mediaStreamTrack.contentHint = 'motion';
                     }
                 });
+
+                const localScreenPub = getLocalScreenPublication();
+                if (localScreenPub && localScreenPub.track) {
+                    showLocalScreenPreview(localScreenPub.track);
+                }
 
                 isScreenOn = true;
                 const btn = document.getElementById('btn-screen');
@@ -806,6 +1185,7 @@
                 btn.classList.remove('active');
                 btn.innerHTML = '💻 <span>共享屏幕</span>';
                 stopScreenBitrateMonitor();
+                hideLocalScreenPreview();
                 
                 document.getElementById('screen-res').disabled = false;
                 document.getElementById('screen-fps').disabled = false;
@@ -815,6 +1195,7 @@
             console.error('屏幕共享未知错误', e);
             isScreenOn = false;
             stopScreenBitrateMonitor();
+            hideLocalScreenPreview();
             document.getElementById('screen-res').disabled = false;
             document.getElementById('screen-fps').disabled = false;
             document.getElementById('screen-bitrate').disabled = false;
@@ -823,6 +1204,7 @@
 
     function leaveRoom() {
         stopScreenBitrateMonitor();
+        hideLocalScreenPreview();
         if(room) room.disconnect();
         window.location.reload(); 
     }
