@@ -1,0 +1,207 @@
+/* 全局深色主题与重置 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1f22; color: #dbdee1; height: 100vh; display: flex; overflow: hidden; }
+
+/* 左侧边栏 */
+#sidebar { width: 260px; background-color: #2b2d31; display: flex; flex-direction: column; padding: 20px; border-right: 1px solid #1e1f22; }
+.sidebar-title { font-size: 14px; font-weight: bold; color: #f2f3f5; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 10px; }
+.tiny-btn { width: 24px; height: 24px; border-radius: 50%; border: none; background: #404249; color: #fff; cursor: pointer; font-weight: 700; }
+.tiny-btn:hover { background: #5865f2; }
+#channel-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.channel-item { border: none; border-radius: 6px; background: #313338; color: #dbdee1; text-align: left; padding: 8px 10px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.channel-item:hover { background: #404249; }
+.channel-item.active { background: #5865f2; color: #fff; }
+.channel-row { display: flex; flex-direction: column; gap: 4px; }
+.channel-participants { font-size: 12px; color: #b5bac1; line-height: 1.4; padding: 0 6px 2px 10px; word-break: break-word; }
+.channel-participants.empty { color: #80848e; }
+.input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+input { padding: 12px; border-radius: 6px; border: none; background-color: #1e1f22; color: #dbdee1; font-size: 14px; outline: none; }
+input:focus { box-shadow: 0 0 0 2px #5865F2; }
+button.primary-btn { background-color: #248046; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+button.primary-btn:hover { background-color: #1a6334; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 成员列表与音量滑块样式 */
+#participant-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.user-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background-color: #313338; border-radius: 6px; font-size: 14px; color: #dbdee1; }
+.user-avatar { width: 32px; height: 32px; background-color: #5865F2; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; flex-shrink: 0; }
+.user-info { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.user-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.user-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.user-status { width: 10px; height: 10px; background-color: #23a559; border-radius: 50%; flex-shrink: 0; }
+.user-bottom { display: flex; flex-direction: column; gap: 6px; }
+
+/* 音量滑块 */
+.volume-slider { width: 100%; height: 6px; -webkit-appearance: none; background: #4f545c; border-radius: 3px; outline: none; transition: background 0.2s; cursor: pointer; }
+.volume-slider:hover { background: #80848e; }
+.volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #dbdee1; cursor: pointer; border: 2px solid #313338; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+
+/* 右侧主区域：修复布局与滚动溢出 */
+#main-area { flex: 1; display: flex; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
+#header { height: 48px; background-color: #313338; border-bottom: 1px solid #1e1f22; display: flex; align-items: center; padding: 0 20px; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.2); z-index: 10; flex-shrink: 0; }
+
+#video-container { 
+    flex: 1; background-color: #000000; padding: 20px; 
+    display: flex; flex-wrap: wrap; justify-content: center; 
+    align-content: flex-start; 
+    gap: 15px; overflow-y: auto; 
+}
+
+/* 🌟 核心修改：将原本给 video 的样式转移给 video-wrapper 包装盒 🌟 */
+.video-wrapper { 
+    flex: 1 1 40%; 
+    min-width: 320px; 
+    max-width: 48%; 
+    max-height: 45vh; 
+    border-radius: 8px; 
+    background-color: #111; 
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5); 
+    cursor: pointer; 
+    transition: transform 0.2s ease, box-shadow 0.2s ease; 
+    /* 关键点：开启相对定位，让内部的名字标签能基于它定位 */
+    position: relative; 
+    display: flex;
+    overflow: hidden;
+}
+
+.video-wrapper:hover { transform: scale(1.02); box-shadow: 0 12px 24px rgba(0,0,0,0.8); z-index: 5; }
+
+.video-wrapper:only-of-type { 
+    max-width: 100%; 
+    max-height: calc(100vh - 160px); 
+}
+
+/* 包装盒内部真正的视频标签填满盒子 */
+.video-wrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    outline: none;
+}
+
+/* 🌟 新增：名字标签的悬浮样式 🌟 */
+.video-name-label {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none; /* 极其重要：让鼠标点击穿透它，不影响双击全屏 */
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px); /* 加一点高贵的毛玻璃效果 */
+}
+
+.screen-local-toggle-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: rgba(242, 63, 66, 0.9);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+    z-index: 12;
+}
+
+.screen-restore-card {
+    flex: 1 1 40%;
+    min-width: 320px;
+    max-width: 48%;
+    max-height: 120px;
+    border-radius: 8px;
+    background-color: #1b1c1f;
+    border: 1px solid #3b3d44;
+    color: #dbdee1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    gap: 12px;
+}
+
+.screen-restore-card button {
+    border: none;
+    border-radius: 6px;
+    background-color: #248046;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#local-screen-preview-box {
+    position: absolute;
+    right: 16px;
+    bottom: 96px;
+    width: 300px;
+    height: 180px;
+    background-color: #0f1012;
+    border: 1px solid #3b3d44;
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 20;
+    display: none;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.45);
+}
+
+#local-screen-preview-title {
+    height: 28px;
+    line-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: #b5bac1;
+    background-color: #1b1c1f;
+    border-bottom: 1px solid #2b2d31;
+}
+
+#local-screen-preview {
+    width: 100%;
+    height: calc(100% - 28px);
+    object-fit: contain;
+    background-color: #000;
+}
+
+/* 底部控制台与设备选择区 */
+#controls-bar { min-height: 80px; background-color: #2b2d31; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; padding: 10px 20px; border-top: 1px solid #1e1f22; flex-shrink: 0; }
+.mic-control-group { display: flex; align-items: center; flex-wrap: nowrap; background-color: #313338; border-radius: 24px; padding: 4px 12px; gap: 10px; min-width: 0; }
+select { background-color: #1e1f22; color: #dbdee1; border: 1px solid #1e1f22; padding: 8px 10px; border-radius: 12px; outline: none; font-size: 13px; max-width: 180px; cursor: pointer; transition: border-color 0.2s; white-space: nowrap; flex-shrink: 0; }
+select:hover:not(:disabled) { border-color: #5865F2; }
+select:disabled { cursor: not-allowed; opacity: 0.5; }
+.action-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #313338; color: #dbdee1; border: none; padding: 12px 24px; border-radius: 24px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; flex-shrink: 0; }
+.action-btn span { white-space: nowrap; }
+.action-btn:hover:not(:disabled) { background-color: #404249; color: white; }
+.action-btn.active { background-color: #f23f42; color: white; }
+.mic-control-group .action-btn { background-color: transparent; padding: 8px 12px; }
+.mic-control-group .action-btn:hover:not(:disabled) { background-color: #404249; }
+.mic-control-group .action-btn.active { background-color: #f23f42; }
+
+@media (max-width: 1200px) {
+    #controls-bar { justify-content: flex-start; }
+}
+
+#audio-container { display: none; }
+
+/* 聊天面板 */
+#chat-panel { width: 300px; background-color: #2b2d31; border-left: 1px solid #1e1f22; display: flex; flex-direction: column; flex-shrink: 0; }
+.chat-header { height: 48px; display: flex; align-items: center; padding: 0 15px; font-weight: bold; border-bottom: 1px solid #1e1f22; flex-shrink: 0; }
+#chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.chat-message { font-size: 13px; line-height: 1.4; display: flex; flex-direction: column; }
+.chat-meta { font-size: 11px; color: #80848e; margin-bottom: 4px; }
+.chat-content { background-color: #313338; padding: 8px 12px; border-radius: 8px; align-self: flex-start; max-width: 90%; word-break: break-word; color: #dbdee1; }
+.chat-message.self { align-items: flex-end; }
+.chat-message.self .chat-content { background-color: #5865F2; color: #fff; }
+.chat-input-area { padding: 15px; background-color: #2b2d31; border-top: 1px solid #1e1f22; display: flex; gap: 10px; flex-shrink: 0; }
+#chat-input { flex: 1; padding: 10px; border-radius: 6px; border: none; background-color: #1e1f22; color: white; outline: none; font-size: 13px; }
+#btn-send { background-color: #5865F2; border: none; color: white; border-radius: 6px; padding: 0 15px; cursor: pointer; font-weight: bold; font-size: 13px; transition: background 0.2s; }
+#btn-send:hover:not(:disabled) { background-color: #4752c4; }
+#btn-send:disabled { opacity: 0.5; cursor: not-allowed; }
