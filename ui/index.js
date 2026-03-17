@@ -16,7 +16,40 @@ const localScreenControls = {};
 let currentLocalScreenTrack = null;
 let remoteAudioContext = null;
 const remoteAudioGainNodes = {};
+const activeSpeakerIdentities = new Set();
+const activeSpeakerDebounceTimers = {};
+const ACTIVE_SPEAKER_LEVEL_THRESHOLD = 0.05;  // 音频能量水平阈值，超过则认为是活跃说话者
+const ACTIVE_SPEAKER_DEBOUNCE_MS = 100;        // 活跃说话者状态的防抖时间，避免频繁闪烁
 let selectedAudioOutputId = localStorage.getItem('lk_audio_output') || 'default';
+
+function clearActiveSpeakerDebounceTimers() {
+    Object.keys(activeSpeakerDebounceTimers).forEach((identity) => {
+        clearTimeout(activeSpeakerDebounceTimers[identity]);
+        delete activeSpeakerDebounceTimers[identity];
+    });
+}
+
+function markParticipantAsActiveSpeaker(identity) {
+    if (!identity) return false;
+    if (activeSpeakerDebounceTimers[identity]) {
+        clearTimeout(activeSpeakerDebounceTimers[identity]);
+        delete activeSpeakerDebounceTimers[identity];
+    }
+    if (activeSpeakerIdentities.has(identity)) return false;
+    activeSpeakerIdentities.add(identity);
+    return true;
+}
+
+function scheduleParticipantActiveSpeakerOff(identity) {
+    if (!identity || !activeSpeakerIdentities.has(identity)) return;
+    if (activeSpeakerDebounceTimers[identity]) return;
+
+    activeSpeakerDebounceTimers[identity] = setTimeout(() => {
+        delete activeSpeakerDebounceTimers[identity];
+        const changed = activeSpeakerIdentities.delete(identity);
+        if (changed) updateParticipantList();
+    }, ACTIVE_SPEAKER_DEBOUNCE_MS);
+}
 
 function normalizeGainValue(rawValue) {
     const n = Number(rawValue);
@@ -301,6 +334,8 @@ function resetRoomUIAfterDisconnect() {
     document.getElementById('btn-send').disabled = true;
     isMicOn = false;
     isScreenOn = false;
+    clearActiveSpeakerDebounceTimers();
+    activeSpeakerIdentities.clear();
     clearRemoteGainNodes();
     hideLocalScreenPreview();
 }
@@ -344,6 +379,7 @@ function updateParticipantList() {
         const name = p.name || p.identity;
         const initial = name ? name.charAt(0).toUpperCase() : '?';
         const displayName = isSelf ? `${name} (我)` : name;
+        const isSpeaking = activeSpeakerIdentities.has(p.identity);
         
         if (!userVolumes[p.identity]) {
             userVolumes[p.identity] = { mic: 1, screen: 1 };
@@ -367,7 +403,7 @@ function updateParticipantList() {
         const userBottomHTML = volumeControlsHTML ? `<div class="user-bottom">${volumeControlsHTML}</div>` : '';
 
         return `
-            <div class="user-item">
+            <div class="user-item${isSpeaking ? ' active-speaker' : ''}">
                 <div class="user-avatar">${initial}</div>
                 <div class="user-info">
                     <div class="user-top">
@@ -634,6 +670,32 @@ async function connectToChannel(targetRoomName) {
         });
 
         room.on(LivekitClient.RoomEvent.ParticipantConnected, updateParticipantList);
+        // 活跃说话者检测：根据音频能量水平更新状态，带防抖避免频闪
+        room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+            const nextActiveIdentities = new Set();
+            (speakers || []).forEach((participant) => {
+                if (!participant || !participant.identity) return;
+                const audioLevel = Number(participant.audioLevel || 0);
+                if (audioLevel >= ACTIVE_SPEAKER_LEVEL_THRESHOLD) {
+                    nextActiveIdentities.add(participant.identity);
+                }
+            });
+
+            let hasImmediateChange = false;
+            nextActiveIdentities.forEach((identity) => {
+                if (markParticipantAsActiveSpeaker(identity)) {
+                    hasImmediateChange = true;
+                }
+            });
+
+            Array.from(activeSpeakerIdentities).forEach((identity) => {
+                if (!nextActiveIdentities.has(identity)) {
+                    scheduleParticipantActiveSpeakerOff(identity);
+                }
+            });
+
+            if (hasImmediateChange) updateParticipantList();
+        });
 
         // 监听静音状态变化以刷新列表
         room.on(LivekitClient.RoomEvent.TrackMuted, (pub) => { if(pub.kind === 'audio') updateParticipantList(); });
