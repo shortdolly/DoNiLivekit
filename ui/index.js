@@ -584,11 +584,15 @@ async function createChannel() {
     if (!name) return;
 
     const serverConfig = getServerConfig();
+    const action = {
+        "action": "create_channel",
+        "name": name
+    };
     try {
         const response = await fetch(`${serverConfig.apiBase}/api/rooms`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
+            body: JSON.stringify(action)
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
